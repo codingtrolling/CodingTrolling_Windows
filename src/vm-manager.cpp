@@ -1,100 +1,88 @@
 #include <iostream>
-#include <vector>
 #include <string>
-#include <libvirt/libvirt.h>
 #include <windows.h>
+#include <fstream>
 
 using namespace std;
 
-// --- VM CONFIGURATION STRUCTURE ---
-struct VMSettings {
-    string name;
-    int memoryMB;
-    int vCPUs;
-    string diskPath;
-};
+// Paths to our hidden dependencies
+const string QEMU_BIN = ".\\_internal\\deps\\qemu\\qemu-system-x86_64.exe";
+const string IMG_TOOL = ".\\_internal\\deps\\qemu\\qemu-img.exe";
+const string VM_STORAGE = ".\\_internal\\data\\vms\\";
 
-// --- CORE VM MANAGER CLASS ---
-class TrollingVMManager {
-private:
-    virConnectPtr conn;
+void CreateDisk(string name, string size) {
+    string cmd = IMG_TOOL + " create -f qcow2 " + VM_STORAGE + name + ".qcow2 " + size;
+    cout << "[SYSTEM] Creating Virtual Disk..." << endl;
+    system(cmd.c_str());
+}
 
-public:
-    TrollingVMManager() {
-        // Connect to the local QEMU hypervisor
-        conn = virConnectOpen("qemu:///system");
-        if (conn == NULL) {
-            cerr << "[ERROR] Failed to connect to hypervisor!" << endl;
-        }
+void LaunchVM(string diskName, int ram, bool hasIso, string isoPath = "") {
+    // Building the hardware string
+    // -m: RAM, -hda: Hard Drive, -vga std: Standard Graphics
+    string cmd = QEMU_BIN + " -m " + to_string(ram) + "M -hda " + VM_STORAGE + diskName + ".qcow2 -vga std -rtc base=localtime";
+    
+    if (hasIso) {
+        cmd += " -cdrom " + isoPath + " -boot d";
     }
 
-    ~TrollingVMManager() {
-        if (conn) virConnectClose(conn);
+    cout << "[SYSTEM] Powering on VM: " << diskName << "..." << endl;
+    
+    // Start QEMU as a separate process so the Manager stays open
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    if (CreateProcessA(NULL, (char*)cmd.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        cout << "[SUCCESS] VM Window Initialized." << endl;
+    } else {
+        cout << "[ERROR] Failed to launch QEMU engine." << endl;
     }
+}
 
-    void ListVMs() {
-        int numDomains = virConnectNumOfDomains(conn);
-        vector<int> ids(numDomains);
-        numDomains = virConnectListDomains(conn, ids.data(), numDomains);
-
-        cout << "\n--- ACTIVE VIRTUAL MACHINES ---" << endl;
-        for (int i = 0; i < numDomains; i++) {
-            virDomainPtr dom = virDomainLookupByID(conn, ids[i]);
-            cout << " [ID " << ids[i] << "] Name: " << virDomainGetName(dom) << endl;
-            virDomainFree(dom);
-        }
-    }
-
-    // Launch a VM using a simple XML definition (The "Troll" way)
-    void StartVM(string vmName) {
-        virDomainPtr dom = virDomainLookupByName(conn, vmName.c_str());
-        if (dom && virDomainCreate(dom) == 0) {
-            cout << "[SUCCESS] VM '" << vmName << "' is now running." << endl;
-        } else {
-            cout << "[FAILED] Could not start VM." << endl;
-        }
-        if (dom) virDomainFree(dom);
-    }
-};
-
-int main(int argc, char* argv[]) {
+int main() {
     SetConsoleTitleA("CT-TOOL-06: VM_MANAGER_PRO");
-    system("color 0C"); // Deep Red for the God Tool
+    system("color 0C"); // Crimson Red
 
-    TrollingVMManager manager;
+    // Ensure the VM storage folder exists
+    CreateDirectoryA(".\\_internal\\data\\vms\\", NULL);
 
-    int choice;
     while (true) {
-        cout << "\n========================================" << endl;
-        cout << "   CODINGTROLLING VM MANAGER v1.0       " << endl;
+        system("cls");
         cout << "========================================" << endl;
-        cout << "1. List All Running VMs\n2. Start VM Instance\n";
-        cout << "3. Create New Disk Image (qemu-img)\n0. Return to Hub" << endl;
+        cout << "    CODINGTROLLING VM MANAGER PRO       " << endl;
+        cout << "========================================" << endl;
+        cout << "1. Create New VM (Empty Disk)\n2. Run Windows 1 (Legacy Mode)\n";
+        cout << "3. Boot ISO (Linux/Windows Installer)\n0. Exit to Hub" << endl;
+        cout << "========================================" << endl;
         cout << "> ";
+
+        int choice;
         cin >> choice;
 
         if (choice == 0) break;
 
         switch (choice) {
-            case 1:
-                manager.ListVMs();
-                break;
-            case 2: {
-                string name;
-                cout << "Enter VM Name: ";
-                cin >> name;
-                manager.StartVM(name);
+            case 1: {
+                string name, size;
+                cout << "Enter VM Name: "; cin >> name;
+                cout << "Enter Disk Size (e.g. 10G, 500M): "; cin >> size;
+                CreateDisk(name, size);
                 break;
             }
-            case 3:
-                // Shell out to qemu-img to create a 20GB disk
-                system("qemu-img create -f qcow2 .\\_internal\\data\\new_disk.qcow2 20G");
-                cout << "[SYSTEM] 20GB Disk Created." << endl;
+            case 2:
+                // Special preset for Win1
+                LaunchVM("win1", 256, false);
                 break;
+            case 3: {
+                string disk, iso;
+                cout << "Select Disk Name: "; cin >> disk;
+                cout << "Path to ISO: "; cin >> iso;
+                LaunchVM(disk, 1024, true, iso);
+                break;
+            }
         }
-        cout << "\nPress [Enter] to continue...";
+        cout << "\nOperation Complete. Press Enter...";
         cin.ignore(); cin.get();
     }
-
     return 0;
 }

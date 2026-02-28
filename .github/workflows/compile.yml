@@ -30,24 +30,23 @@ jobs:
         # 1. Hub
         g++ src/hub.cpp -o _DISTRIBUTION_READY/CodingTrollingHub.exe -lgdi32
         
-        # 2. Media Player (DirectShow)
-        g++ src/media_player.cpp -o _DISTRIBUTION_READY/_internal/bin/media-player.exe -lstrmiids -lole32 -loleaut32
+        # 2. Media Player (Fixed name with dash)
+        g++ src/media-player.cpp -o _DISTRIBUTION_READY/_internal/bin/media-player.exe -lstrmiids -lole32 -loleaut32
         
-        # 3. PDF Reader (Shell Integration)
-        g++ src/pdf_reader.cpp -o _DISTRIBUTION_READY/_internal/bin/pdf-reader.exe
+        # 3. PDF Reader (Fixed name with dash)
+        g++ src/pdf-reader.cpp -o _DISTRIBUTION_READY/_internal/bin/pdf-reader.exe
         
-        # 4. Bozin AI (Needs Curl)
-        # Note: This assumes you uploaded libcurl.a to your lib/ folder
-        g++ src/bozin_ai.cpp -o _DISTRIBUTION_READY/_internal/bin/bozin-ai.exe -I./include -L./lib -lcurl
+        # 4. Bozin AI (Fixed name with dash)
+        g++ src/bozin-ai.cpp -o _DISTRIBUTION_READY/_internal/bin/bozin-ai.exe -I./include -L./lib -lcurl
         
-        # 5. Android Launcher
-        g++ src/android_launcher.cpp -o _DISTRIBUTION_READY/_internal/bin/android-launcher.exe
+        # 5. Android Launcher (Fixed name with dash)
+        g++ src/android-launcher.cpp -o _DISTRIBUTION_READY/_internal/bin/android-launcher.exe
         
-        # 6. Panny Painting (Needs GLFW & OpenGL)
-        g++ src/panny_painting.cpp -o _DISTRIBUTION_READY/_internal/bin/panny-paint.exe -I./include -L./lib -lglfw3 -lopengl32 -lgdi32
+        # 6. Panny Painting (Fixed name with dash)
+        g++ src/panny-painting.cpp -o _DISTRIBUTION_READY/_internal/bin/panny-paint.exe -I./include -L./lib -lglfw3 -lopengl32 -lgdi32
         
-        # 7. VM Manager
-        g++ src/vm_manager.cpp -o _DISTRIBUTION_READY/_internal/bin/vm-manager.exe
+        # 7. VM Manager (Fixed name with dash)
+        g++ src/vm-manager.cpp -o _DISTRIBUTION_READY/_internal/bin/vm-manager.exe
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4

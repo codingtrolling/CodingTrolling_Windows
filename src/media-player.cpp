@@ -10,9 +10,9 @@ using namespace std;
 
 void PlayVideo(string filename) {
     IGraphBuilder *pGraph = NULL;
-    IMediaControl *pControl = NULL;
-    IMediaEvent   *pEvent = NULL;
-    IMediaWindow  *pWindow = NULL;
+    IVideoControl *pControl = NULL;
+    IVideoEvent   *pEvent = NULL;
+    IVideoWindow  *pWindow = NULL;
 
     // 1. Initialize the COM library
     HRESULT hr = CoInitialize(NULL);

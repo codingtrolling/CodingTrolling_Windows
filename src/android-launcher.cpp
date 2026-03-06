@@ -1,79 +1,81 @@
-#include <iostream>
-#include <string>
 #include <windows.h>
-#include <vector>
+#include <shellapi.h>
+#include <iostream>
 
-using namespace std;
+// Colors: Cyber Dark (Background) and Cyber Cyan (Text/Accents)
+#define CYBER_DARK RGB(13, 13, 13)
+#define CYBER_CYAN RGB(0, 255, 255)
 
-// Path to the hidden ADB engine
-const string ADB_PATH = ".\\_internal\\bin\\adb\\adb.exe";
-const string SCRCPY_PATH = ".\\_internal\\bin\\scrcpy\\scrcpy.exe";
+// Global Brush for Background
+HBRUSH hBackBrush = CreateSolidBrush(CYBER_DARK);
 
-// Helper to run a command and hide the black CMD window
-void ExecuteHidden(string cmd) {
-    string fullCmd = "/C " + cmd;
-    ShellExecuteA(NULL, "open", "cmd.exe", fullCmd.c_str(), NULL, SW_HIDE);
+// Function to handle the "Path Not Found" error
+void RunCommand(const char* cmd) {
+    // This ensures we look in the hidden deps folder
+    char fullPath[MAX_PATH];
+    wsprintf(fullPath, "_internal\\deps\\%s", cmd);
+    
+    HINSTANCE result = ShellExecute(NULL, "open", fullPath, NULL, NULL, SW_SHOWNORMAL);
+    
+    if ((INT_PTR)result <= 32) {
+        MessageBox(NULL, "Error: Tool not found in _internal\\deps\\. Check your installer!", "System Failure", MB_ICONERROR);
+    }
 }
 
-// Function to run ADB and show output in our suite
-void RunADB(string args) {
-    string command = ADB_PATH + " " + args;
-    system(command.c_str());
-}
-
-int main() {
-    SetConsoleTitleA("CT-TOOL-04: ANDROID_LAUNCHER");
-    system("color 0E"); // Yellow theme
-
-    int choice;
-    while (true) {
-        cout << "========================================" << endl;
-        cout << "    ANDROID LAUNCHER & BRIDGE v1.0      " << endl;
-        cout << "========================================" << endl;
-        cout << "1. List Connected Devices\n2. Mirror Screen (SCRCPY)\n3. Take Screenshot\n";
-        cout << "4. Reboot Device\n5. Install APK\n0. Back to Hub" << endl;
-        cout << "========================================" << endl;
-        cout << "> ";
-        cin >> choice;
-
-        if (choice == 0) break;
-
-        switch (choice) {
-            case 1:
-                cout << "[SYSTEM] Scanning for devices..." << endl;
-                RunADB("devices");
-                break;
-            case 2:
-                cout << "[SYSTEM] Initializing Screen Mirror..." << endl;
-                // Launching scrcpy as a separate process so it doesn't block the launcher
-                ShellExecuteA(NULL, "open", SCRCPY_PATH.c_str(), NULL, NULL, SW_SHOWNORMAL);
-                break;
-            case 3: {
-                string filename;
-                cout << "Enter filename (e.g., shot.png): ";
-                cin >> filename;
-                RunADB("shell screencap -p /sdcard/" + filename);
-                RunADB("pull /sdcard/" + filename + " .");
-                cout << "[SUCCESS] Saved to project folder." << endl;
-                break;
-            }
-            case 4:
-                cout << "[SYSTEM] Sending Reboot Signal..." << endl;
-                RunADB("reboot");
-                break;
-            case 5: {
-                string apk;
-                cout << "Drag and Drop APK here: ";
-                cin >> apk;
-                RunADB("install " + apk);
-                break;
-            }
-            default:
-                cout << "Invalid Command." << endl;
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg) {
+        case WM_CTLCOLORBTN:
+        case WM_CTLCOLORSTATIC: {
+            HDC hdcStatic = (HDC)wParam;
+            SetTextColor(hdcStatic, CYBER_CYAN);
+            SetBkColor(hdcStatic, CYBER_DARK);
+            return (INT_PTR)hBackBrush;
         }
-        cout << "\nPress [Enter] to continue...";
-        cin.ignore(); cin.get();
-        system("cls");
+        case WM_CREATE: {
+            // UI Title
+            CreateWindow("STATIC", "--- NEURAL LINK: ANDROID ---", WS_VISIBLE | WS_CHILD | SS_CENTER, 20, 10, 260, 20, hwnd, NULL, NULL, NULL);
+
+            // Button 1: Mirror Screen (Requires scrcpy/adb in deps)
+            CreateWindow("BUTTON", "MIRROR NEURAL FEED", WS_VISIBLE | WS_CHILD | BS_FLAT, 30, 50, 220, 40, hwnd, (HMENU)1, NULL, NULL);
+
+            // Button 2: Install APK
+            CreateWindow("BUTTON", "INJECT APK DATA", WS_VISIBLE | WS_CHILD | BS_FLAT, 30, 100, 220, 40, hwnd, (HMENU)2, NULL, NULL);
+
+            // Button 3: ADB Shell
+            CreateWindow("BUTTON", "OPEN ROOT TERMINAL", WS_VISIBLE | WS_CHILD | BS_FLAT, 30, 150, 220, 40, hwnd, (HMENU)3, NULL, NULL);
+            break;
+        }
+        case WM_COMMAND: {
+            if (LOWORD(wParam) == 1) RunCommand("scrcpy.exe");
+            if (LOWORD(wParam) == 2) RunCommand("adb.exe install app.apk");
+            if (LOWORD(wParam) == 3) RunCommand("cmd.exe /c _internal\\deps\\adb.exe shell & pause");
+            break;
+        }
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+    }
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = "CyberAndroid";
+    wc.hbrBackground = hBackBrush;
+    wc.hCursor = LoadCursor(NULL, IDC_CROSS); // Cyber feel cursor
+
+    RegisterClass(&wc);
+
+    HWND hwnd = CreateWindowEx(WS_EX_TOPMOST, "CyberAndroid", "ANDROID LINK", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+        CW_USEDEFAULT, CW_USEDEFAULT, 300, 280, NULL, NULL, hInstance, NULL);
+
+    ShowWindow(hwnd, nShowCmd);
+    MSG msg = {};
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
     return 0;
 }
